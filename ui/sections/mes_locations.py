@@ -58,7 +58,8 @@ class MesLocationsFrame(ctk.CTkFrame):
 
                 ctk.CTkLabel(bloc, text=infos, justify="left").pack(padx=10, pady=10)
 
-                if loc.date_debut > datetime.now():
+                if loc.date_debut > datetime.now().date():
+
                     ctk.CTkButton(
                         bloc,
                         text="Annuler",

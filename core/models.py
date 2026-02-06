@@ -1,5 +1,5 @@
 # core/models.py
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Date, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
@@ -83,6 +83,8 @@ class Location(Base):
     date_debut = Column(Date)
     date_fin = Column(Date)
 
+    duree = Column(Integer)  # Durée en jours
+    prix_total = Column(Float)
     active = Column(Boolean, default=True)
     statut=Column(String, default="en cours")
 

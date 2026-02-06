@@ -49,8 +49,11 @@ class VehiculeManager(ctk.CTkToplevel):
         ctk.CTkButton(search_frame, text="Rechercher", command=self._rechercher_vehicule).grid(row=0, column=2, padx=10)
 
         # Tableau des véhicules (mocké pour l’instant)
-        self.table_frame = ctk.CTkFrame(self)
+        self.table_frame = ctk.CTkScrollableFrame(self, width=750, height=500)
+        
         self.table_frame.pack(pady=10, fill="both", expand=True)
+
+        
         self._load_vehicules()
 
         

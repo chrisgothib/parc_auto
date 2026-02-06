@@ -5,6 +5,7 @@ from core.models import Location, Client, Vehicule
 from sqlalchemy import String, or_
 import csv
 from tkinter.filedialog import asksaveasfilename
+from sqlalchemy.orm import joinedload
 
 
 class LocationManager(ctk.CTkToplevel):
@@ -68,12 +69,13 @@ class LocationManager(ctk.CTkToplevel):
             ctk.CTkLabel(search_frame, text="Filtrer résultats :").grid(row=0, column=3, padx=(20, 5))
             ctk.CTkOptionMenu(
             search_frame,
-            values=["Tous", "Active", "Terminée"],
+            values=["tous", "en cours", "terminée"],
             variable=self.statut_filter_var
         ).grid(row=0, column=4, padx=5)
 
     # Zone d’affichage des résultats
-            self.table_frame = ctk.CTkFrame(self)
+            self.table_frame = ctk.CTkScrollableFrame(self, width=750, height=500) 
+            
             self.table_frame.pack(pady=10, fill="both", expand=True)
 
     # Chargement initial des données
@@ -82,8 +84,8 @@ class LocationManager(ctk.CTkToplevel):
     def _load_locations(self):
         db = SessionLocal()
         try:
-            filtre = self.tri_var.get()
-            query = db.query(Location)
+            filtre = self.tri_var.get() 
+            query = db.query(Location).options( joinedload(Location.client), joinedload(Location.vehicule) )
 
             if filtre == "en cours":
                 query = query.filter_by(statut="en cours")
@@ -100,24 +102,39 @@ class LocationManager(ctk.CTkToplevel):
             widget.destroy()
 
         if not locations:
-            ctk.CTkLabel(self.table_frame, text="Aucune location trouvée.", font=ctk.CTkFont(size=16, slant="italic")).pack(pady=20)
+            ctk.CTkLabel(
+                self.table_frame,
+                text="Aucune location trouvée.",
+                font=ctk.CTkFont(size=16, slant="italic")
+            ).pack(pady=20)
             return
 
         self.resultats = []
 
         for loc in locations:
-            client = loc.client
-            vehicule = loc.vehicule
-            statut = loc.statut.capitalize() if hasattr(loc, "statut") else ("Active" if loc.active else "Terminée")
+            # print(f"Affichage location ID: {loc.id}")
+            client = getattr(loc, "client", None)
+            vehicule = getattr(loc, "vehicule", None)
 
-            label = f"{client.nom} {client.prenom} → {vehicule.marque} {vehicule.modele} ({vehicule.immatriculation}) | {loc.duree} j | {statut}"
+            client_nom = getattr(client, "nom", "Inconnu")
+            client_prenom = getattr(client, "prenom", "")
+            client_email = getattr(client, "email", "—")
+
+            vehicule_marque = getattr(vehicule, "marque", "Inconnu")
+            vehicule_modele = getattr(vehicule, "modele", "")
+            vehicule_immat = getattr(vehicule, "immatriculation", "—")
+
+            duree = getattr(loc, "duree", "?")
+            statut = getattr(loc, "statut", "en cours").capitalize()
+
+            label = f"{client_nom} {client_prenom} → {vehicule_marque} {vehicule_modele} ({vehicule_immat}) | {duree} j | {statut}"
 
             self.resultats.append({
-                "Client": f"{client.nom} {client.prenom}",
-                "Email": client.email,
-                "Véhicule": f"{vehicule.marque} {vehicule.modele}",
-                "Immatriculation": vehicule.immatriculation,
-                "Durée (jours)": loc.duree,
+                "Client": f"{client_nom} {client_prenom}",
+                "Email": client_email,
+                "Véhicule": f"{vehicule_marque} {vehicule_modele}",
+                "Immatriculation": vehicule_immat,
+                "Durée (jours)": duree,
                 "Statut": statut
             })
 
@@ -132,7 +149,7 @@ class LocationManager(ctk.CTkToplevel):
                 width=700
             ).pack(side="left", padx=10)
 
-            if hasattr(loc, "statut") and loc.statut == "en cours":
+            if statut.lower() == "en cours":
                 ctk.CTkButton(
                     ligne,
                     text="Rendre",
@@ -176,23 +193,23 @@ class LocationManager(ctk.CTkToplevel):
         db = SessionLocal()
         query = self.search_var.get().strip().lower()
 
-        locations = db.query(Location).join(Client).join(Vehicule).filter(
-            or_(
-                Client.nom.ilike(f"%{query}%"),
-                Client.prenom.ilike(f"%{query}%"),
-                Client.email.ilike(f"%{query}%"),
-                Vehicule.marque.ilike(f"%{query}%"),
-                Vehicule.modele.ilike(f"%{query}%"),
-                Vehicule.immatriculation.ilike(f"%{query}%"),
-                Location.duree.cast(String).ilike(f"%{query}%"),
-                Location.active.cast(String).ilike(f"%{query}%")
-            )
-        )
+        locations = db.query(Location).options( joinedload(Location.client), joinedload(Location.vehicule) ).join(Client).join(Vehicule).filter( 
+            or_( Client.nom.ilike(f"%{query}%"), 
+                Client.prenom.ilike(f"%{query}%"), 
+                Client.email.ilike(f"%{query}%"), Vehicule.marque.ilike(f"%{query}%"), 
+                Vehicule.modele.ilike(f"%{query}%"), 
+                Vehicule.immatriculation.ilike(f"%{query}%"), Location.duree.cast(String).ilike(f"%{query}%"), 
+                
+                Location.statut.ilike(f"%{query}%")
+                #Location.active.cast(String).ilike(f"%{query}%") 
+                ) )
 
         statut = self.statut_filter_var.get().lower()
-        if statut in ["active", "terminée"]:
-            is_active = True if statut == "active" else False
-            locations = locations.filter(Location.active == is_active)
+        if statut in ["en cours", "terminée"]:
+            locations = locations.filter(Location.statut == statut)
+        
+        else: 
+            pass
 
         results = locations.all()
         db.close()

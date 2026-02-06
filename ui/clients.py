@@ -48,8 +48,10 @@ class ClientManager(ctk.CTkToplevel):
         ctk.CTkButton(search_frame, text="Réinitialiser", command=self._reset_recherche, fg_color="gray", hover_color="darkgray").grid(row=0, column=2, padx=5)
 
         # Liste des clients
-        self.table_frame = ctk.CTkFrame(self)
+        self.table_frame = ctk.CTkScrollableFrame(self, width=750, height=500)
+        
         self.table_frame.pack(pady=10, fill="both", expand=True)
+
 
         
         
